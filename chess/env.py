@@ -1,9 +1,6 @@
 from typing import Any, Tuple, TypeVar
 import chex
 import pax
-import jax.numpy as jnp
-import jax
-import jax.random as jr
 
 E = TypeVar("E")
 
