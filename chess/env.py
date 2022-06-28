@@ -36,3 +36,6 @@ class Environment(pax.Module):
     def max_num_steps(self) -> int:
         raise NotImplementedError()
 
+    def render(self) -> Any:
+        pass
+

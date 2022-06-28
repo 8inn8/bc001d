@@ -73,4 +73,38 @@ def agent_vs_agent_multiple_games(agent1, agent2, env, rng_key, enable_mcts: boo
     return win_count, draw_count, loss_count
 
 
+def human_vs_agent(agent, env: Environment, human_first: bool = True, enable_mcts: bool = False, num_simulations_per_move: int = 2048, temperature: float = 0.2, rng_key=None):
+    env = reset_env(env)
+    agent_turn = 1 if human_first else 0
+    rng_key = jr.PRNGKey(random.randint(0, 999999)) if rng_key is None else rng_key
+    for i in range(4096):
+        print()
+        print(f"Move {i}")
+        print("=====")
+        print()
+        env.render()
+        if i % 2 == agent_turn:
+            print()
+            s = env.canonical_observation()
+            print("# s =", s)
+            rng_key_1, rng_key = jr.split(rng_key)
 
+            action, action_weights, value = play_one_move(agent, env, rng_key_1, enable_mcts=enable_mcts, num_simulations=num_simulations_per_move, temperature=temperature)
+            print("#  A(s) =", action_weights)
+            print("#  V(s) =", value)
+            env, reward = env_step(env, action.item())
+            print(f"#  Agent selected action {action}, got reward {reward}")
+        else:
+            action = int(input("> "))
+            env, reward = env_step(env, action)
+            print(f"#  Human selected action {action}, got reward {reward}")
+        if env.is_terminated().item():
+            break
+    else:
+        print("Timeout!")
+    print()
+    print("Final board")
+    print("===========")
+    print()
+    env.render()
+    print()
