@@ -7,6 +7,7 @@ import jax.random as jr
 
 E = TypeVar("E")
 
+
 class Environment(pax.Module):
     def __init__(self):
         super().__init__()
@@ -34,3 +35,4 @@ class Environment(pax.Module):
 
     def max_num_steps(self) -> int:
         raise NotImplementedError()
+
