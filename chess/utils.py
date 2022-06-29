@@ -9,7 +9,6 @@ import pax
 
 from env import Environment as E
 
-
 @pax.pure
 def batched_policy(agent, states):
     return agent, agent(states, batched=True)
@@ -18,7 +17,6 @@ def batched_policy(agent, states):
 @ft.partial(jax.jit, static_argnums=1)
 def replicate(value: chex.ArrayTree, repeat: int) -> chex.ArrayTree:
     return jax.tree_map(lambda x: jnp.stack([x] * repeat), value)
-
 
 @pax.pure
 def reset_env(env: E) -> E:

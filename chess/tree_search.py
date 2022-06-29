@@ -11,7 +11,6 @@ def recurrent_fn(params, rng_key: chex.Array, action: chex.Array, embedding):
     del rng_key
     agent = params
     env = embedding
-    print("Arrived here....")
     env, reward = jax.vmap(env_step)(env, action)
     state = env.canonical_observation()
     prior_logits, value = jax.vmap(lambda a, s: a(s), in_axes=(None, 0))(agent, state)
@@ -20,9 +19,6 @@ def recurrent_fn(params, rng_key: chex.Array, action: chex.Array, embedding):
     prior_logits = jnp.where(invalid_actions, float("-inf"), prior_logits)
     discount = -1.0 * jnp.ones_like(reward)
     terminated = env.is_terminated()
-    print(terminated.shape)
-    print(value.shape)
-    print(discount.shape)
     assert value.shape == terminated.shape
     assert discount.shape == terminated.shape
     value = jnp.where(terminated, 0.0, value)
@@ -34,14 +30,9 @@ def recurrent_fn(params, rng_key: chex.Array, action: chex.Array, embedding):
 
 def improve_policy_with_mcts(agent, env: E, rng_key: chex.Array, rec_fn, num_simulations: int, temperature: float = 1.0):
     state = env.canonical_observation()
-    print("State::::::::::::::::::::::", state)
-    print("State::::::::: ", state)
-    print("env.num_states", env.canonical_observation())
     _, (prior_logits, value) = batched_policy(agent, state)
-    print(prior_logits, value)
     root = mctx.RootFnOutput(prior_logits=prior_logits, value=value, embedding=env)
 
-    print("got there")
     policy_output = mctx.gumbel_muzero_policy(
         params=agent,
         rng_key=rng_key,

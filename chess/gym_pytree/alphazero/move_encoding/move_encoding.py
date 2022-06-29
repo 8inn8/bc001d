@@ -180,5 +180,10 @@ class MoveEncoding(gym.ActionWrapper):
     def tree_unflatten(cls, aux_data, children):
         return cls(env=children[0])
 
+    def set_chessboard(self, chessboard):
+        super()._board = chessboard
+
+
+
 
 jax.tree_util.register_pytree_node(MoveEncoding, MoveEncoding.tree_flatten, MoveEncoding.tree_unflatten)
