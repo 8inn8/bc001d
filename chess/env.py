@@ -18,10 +18,10 @@ class Environment(pax.Module):
     def is_terminated(self) -> chex.Array:
         raise NotImplementedError()
 
-    def observation(self) -> Any:
+    def observation(self) -> chex.Array:
         pass
 
-    def canonical_observation(self) -> Any:
+    def canonical_observation(self) -> chex.Array:
         pass
 
     def num_actions(self) -> int:
@@ -33,6 +33,6 @@ class Environment(pax.Module):
     def max_num_steps(self) -> int:
         raise NotImplementedError()
 
-    def render(self) -> Any:
+    def render(self):
         pass
 
