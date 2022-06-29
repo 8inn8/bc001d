@@ -28,7 +28,6 @@ def recurrent_fn(params, rng_key: chex.Array, action: chex.Array, embedding):
     return recurrent_fn_output, env
 
 
-@jax.jit
 def improve_policy_with_mcts(agent, env: E, rng_key: chex.Array, rec_fn, num_simulations: int, temperature: float = 1.0):
     state = env.canonical_observation()
     _, (prior_logits, value) = batched_policy(agent, state)

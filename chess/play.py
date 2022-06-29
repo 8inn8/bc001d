@@ -40,7 +40,7 @@ def play_one_move(agent, env: Environment, rng_key: chex.Array, enable_mcts: boo
     return action, action_weights, value
 
 
-@partial(jax.jit, static_argnames=("temperature", "num_simulations", "enable_mcts"))
+@partial(jax.jit, static_argnames=("temperature", "num_simulations_per_move", "enable_mcts"))
 def agent_vs_agent(agent1, agent2, env:Environment, rng_key: chex.Array, enable_mcts: bool = True, num_simulations_per_move: int = 2048, temperature: float = 0.2):
     def cond_fn(state):
         env, *_ = state

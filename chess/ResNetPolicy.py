@@ -25,7 +25,7 @@ class ResidualBlock(pax.Module):
 
 
 class ResnetPolicyValueNet(pax.Module):
-    def __init__(self, input_dims, num_actions: int, dim: int = 128, num_resblock: int = 20):
+    def __init__(self, input_dims, num_actions: int, dim: int = 256, num_resblock: int = 20):
         super().__init__()
 
 

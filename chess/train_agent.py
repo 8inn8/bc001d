@@ -125,4 +125,69 @@ def train_step(net, optim, data: TrainingExample):
     return net, optim, losses
 
 
+def train(game_class="chess_game.ChessGame", agent_class="ResNetPolicy.ResnetPolicyValueNet", batch_size: int = 64,
+          num_iterations: int = 256, num_simulations_per_move: int = 2048, num_self_plays_per_interaction: int = 4096,
+          learning_rate: float = 0.001, ckpt_filename: str = "./data/agent.ckpt", random_seed: int = 88, weight_decay: float = 1e-4,
+          temperature_decay=0.9, buffer_size: int = 66_666, rng_key=None):
+    env = import_class(game_class)()
+    agent = import_class(agent_class)(input_dims=env.observation().shape, num_actions=env.num_actions())
+    optim = opax.adamw(learning_rate, weight_decay=weight_decay).init(agent.parameters())
+    if os.path.isfile(ckpt_filename):
+        print("Loading weights at ", ckpt_filename)
+        with open(ckpt_filename, "rb") as f:
+            d = pickle.load(f)
+            agent = agent.load_state_dict(d["agent"])
+            optim = optim.load_state_dict(d["optim"])
+            start_iter = d["iter"] + 1
+            # Todo migrate optimizer to Radam or lookahead + radam
+    else:
+        start_iter = 0
+    rng_key = jax.random.PRNGKey(random_seed) if rng_key is None else rng_key
+    shuffler = random.Random(random_seed)
+    # noinspection PyTypeHints
+    buffer = Deque(maxlen=buffer_size)
 
+    for iteration in range(start_iter, num_iterations):
+        print(f"Iteration {iteration}")
+        rng_key_1, rng_key_2, rng_key_3, rng_key = jax.random.split(rng_key, 4)
+        agent = agent.eval()
+        data = collect_self_play_data(agent, env, rng_key_1, batch_size, num_self_plays_per_interaction, num_simulations_per_move, temperature_decay)
+        data = prepare_training_data(data)
+        buffer.extend(data)
+        data = list(buffer)
+        shuffler.shuffle(data)
+        N = len(data)
+        losses = []
+        old_agent = jax.tree_map(lambda x: jnp.copy(x), agent)
+        agent = agent.train()
+        with click.progressbar(range(0, N - batch_size, batch_size), label="train agent") as bar:
+            for i in bar:
+                batch = data[i : (i + batch_size)]
+                batch = jax.tree_map(lambda *xs: jnp.stack(xs), *batch)
+                agent, optim, loss = train_step(agent, optim, batch)
+                losses.append(loss)
+
+        value_loss, policy_loss = zip(*losses)
+        value_loss = sum(value_loss).item() / len(value_loss)
+        policy_loss = sum(policy_loss).item() / len(policy_loss)
+        print(f" train losses:  value {value_loss:.3f}  policy {policy_loss:.3f}")
+        win_count1, draw_count1, loss_count1 = agent_vs_agent_multiple_games(agent.eval(), old_agent, env, rng_key_2)
+        loss_count2, draw_count2, win_count2 = agent_vs_agent_multiple_games(old_agent, agent.eval(), env, rng_key_3)
+
+        print("  play against previous version: {} win - {} draw - {} loss".format(win_count1 + win_count2, draw_count1 + draw_count2, loss_count1 + loss_count2))
+        with open(ckpt_filename, "wb") as f:
+            dic = {
+                "agent": agent.state_dict(),
+                "optim": optim.state_dict(),
+                "iter": iteration,
+            }
+            pickle.dump(dic, f)
+    print("Done!")
+
+
+if __name__ == '__main__':
+    print("Cores :::: ", jax.local_devices())
+
+    train = partial(train, game_class="test_connect_four.Connect4Game")
+
+    fire.Fire(train)
