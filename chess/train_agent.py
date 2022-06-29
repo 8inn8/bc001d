@@ -19,7 +19,7 @@ import opax
 import optax
 import pax
 
-from chess_game import ChessMaster
+from chess_game import ChessMain
 from env import Environment
 from play import agent_vs_agent_multiple_games
 from tree_search import improve_policy_with_mcts, recurrent_fn
@@ -46,7 +46,6 @@ class MoveOutput:
 @partial(jax.pmap, in_axes=(None, None, 0), static_broadcasted_argnums=(3, 4, 5))
 @partial(jax.jit, static_argnums=(3, 4, 5))
 def collect_batched_self_play_data(agent, env: Environment, rng_key: chex.Array, batch_size: int, num_simulations_per_move: int, temperature_decay: float):
-
     def single_move(prev, inputs):
         env, rng_key, step = prev
         del inputs
@@ -127,11 +126,12 @@ def train_step(net, optim, data: TrainingExample):
     return net, optim, losses
 
 
-def train(game_class="chess_game.ChessGame", agent_class="ResNetPolicy.ResnetPolicyValueNet", batch_size: int = 128,
+def train(game_class="chess_game.ChessMain", agent_class="ResNetPolicy.ResnetPolicyValueNet", batch_size: int = 128,
           num_iterations: int = 256, num_simulations_per_move: int = 2048, num_self_plays_per_interaction: int = 4096, num_sim_games: int = 512,
           learning_rate: float = 0.001, ckpt_filename: str = "./data/agent.ckpt", random_seed: int = 88, weight_decay: float = 1e-4,
           temperature_decay=0.9, buffer_size: int = 66_666, rng_key=None):
     env = import_class(game_class)()
+    obs = env.canonical_observation()
     agent = import_class(agent_class)(input_dims=env.observation().shape, num_actions=env.num_actions())
     optim = opax.adamw(learning_rate, weight_decay=weight_decay).init(agent.parameters())
     if os.path.isfile(ckpt_filename):
@@ -150,7 +150,6 @@ def train(game_class="chess_game.ChessGame", agent_class="ResNetPolicy.ResnetPol
     buffer = Deque(maxlen=buffer_size)
 
     for iteration in range(start_iter, num_iterations):
-        print(f"Iteration {iteration}")
         rng_key_1, rng_key_2, rng_key_3, rng_key = jax.random.split(rng_key, 4)
         agent = agent.eval()
         data = collect_self_play_data(agent, env, rng_key_1, batch_size, num_self_plays_per_interaction, num_simulations_per_move, temperature_decay)
@@ -188,9 +187,8 @@ def train(game_class="chess_game.ChessGame", agent_class="ResNetPolicy.ResnetPol
 
 
 if __name__ == '__main__':
-    cg = ChessMaster()
-    # print("Cores :::: ", jax.local_devices())
-    #
-    # train = partial(train, game_class="chess_game.ChessGame", batch_size=32, num_iterations=512, num_simulations_per_move=64, num_self_plays_per_interaction=888, num_sim_games=32)
-    #
-    # fire.Fire(train)
+    print("Cores :::: ", jax.local_devices())
+
+    train = partial(train, game_class="chess_game.ChessMain", batch_size=32, num_iterations=512, num_simulations_per_move=64, num_self_plays_per_interaction=64, num_sim_games=64)
+
+    fire.Fire(train)
