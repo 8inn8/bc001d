@@ -12,83 +12,8 @@ from gym import Wrapper, spaces
 from gym_chess import alphazero, Chess, BoardEncoding, MoveEncoding
 import chess
 import chex
-import random
-
-from gym_chess.alphazero.board_encoding import BoardHistory
 
 from env import Environment
-
-
-class ChessGame(Environment):
-    board: Wrapper
-    who_play: chex.Array
-    terminated: chex.Array
-    winner: chex.Array
-    count: chex.Array
-    winner: chex.Array
-
-    def __int__(self):
-        super().__init__()
-        self.reset()
-        chessenv = ChessBase()
-        chessazenv = BoardEncoding(chessenv, history_length=80)
-        self.board = MoveEncoding(chessazenv)
-        self.who_play = jnp.array(1, dtype=jnp.int32)
-        self.count = jnp.array(0, dtype=jnp.int32)
-        self.terminated = jnp.array(0, dtype=jnp.bool_)
-        self.winner = jnp.array(0, dtype=jnp.int32)
-
-    def reset(self):
-        chessenv = ChessBase()
-        chessazenv = BoardEncoding(chessenv, history_length=80)
-        self.board = MoveEncoding(chessazenv)
-        self.who_play = jnp.array(1, dtype=jnp.int32)
-        self.count = jnp.array(0, dtype=jnp.int32)
-        self.terminated = jnp.array(0, dtype=jnp.bool_)
-        self.winner = jnp.array(0, dtype=jnp.int32)
-
-    def num_actions(self) -> int:
-        return 4672
-
-    def invalid_actions(self) -> chex.Array:
-        legal_actions = set(self.board.legal_actions)
-        return jnp.array(list(map(lambda t: 1 if t not in legal_actions else 0, range(4672))), dtype=bool)
-
-    @pax.pure
-    def step(self, action: chex.Array) -> Tuple["ChessGame", chex.Array]:
-        legal_actions = set(self.board.legal_actions)
-        invalid_move = jnp.array(list(map(lambda t: 1 if t not in legal_actions else 0, action)), dtype=bool)
-        if jnp.sum(invalid_move) > 0:
-            rewards = -100.0 * jnp.ones_like(action)
-            return self, rewards
-
-        (obsb, reward, done, _) = self.board.step(np.array(action))
-        reward = 0.5 * self.who_play if obsb.can_claim_threefold_repetition() or obsb.can_claim_fifty_moves() or obsb.can_claim_draw() or obsb.is_fivefold_repetition() or \
-            obsb.is_seventyfive_moves() else 1.0 * self.who_play if abs(reward) == 1 else 0.0
-
-        self.who_play = -self.who_play
-
-        self.terminated = True * jnp.ones_like(action, dtype=bool) if jnp.logical_or(self.terminated, jnp.abs(reward) == 0.5, jnp.abs(reward) == 1.0) else False * jnp.ones_like(action, dtype=bool)
-
-        reward = jnp.ones_like(action) * reward
-
-        return self, reward
-
-    def observation(self) -> chex.Array:
-        board = self.board.observation_p()
-        return jnp.array(board)
-
-    def canonical_observation(self):
-        return self.observation() * self.who_play[..., None, None]
-
-    def is_terminated(self) -> chex.Array:
-        return self.terminated
-
-    def max_num_steps(self) -> int:
-        return 100000
-
-    def render(self):
-        print(self.board.render())
 
 
 class ChessBase(gym.Env):
@@ -154,7 +79,7 @@ class ChessBase(gym.Env):
         self._board = chess.Board()
         self._ready = True
 
-        return self.observation_p()
+        return self.observation_p
 
     def step(self, action: chess.Move) -> Tuple[chess.Board, float, bool, None]:
 
@@ -167,7 +92,7 @@ class ChessBase(gym.Env):
 
         self._board.push(action)
 
-        observation = self.observation_p()
+        observation = self.observation_p
         reward = self._reward()
         done = self._board.is_game_over()
 
@@ -201,6 +126,7 @@ class ChessBase(gym.Env):
 
         return list(self._board.legal_moves)
 
+    @property
     def observation_p(self) -> chess.Board:
         """Returns the current board position."""
         return self._board.copy()
@@ -217,3 +143,73 @@ class ChessBase(gym.Env):
         board = self._board if self._board else chess.Board()
         return str(board._repr_svg_())
 
+
+class ChessMaster(Environment):
+    b: MoveEncoding
+    who_play: chex.Array
+    count: chex.Array
+    terminated: chex.Array
+
+    def __init__(self, b=MoveEncoding(BoardEncoding(ChessBase(), history_length=80))):
+        super().__init__()
+        self.b = b
+        self.who_play = jnp.array(1, dtype=jnp.int32)
+        self.count = jnp.array(0, dtype=jnp.int32)
+        self.terminated = jnp.array(0, dtype=jnp.bool_)
+        self.reset()
+
+    def reset(self):
+        chessenv = ChessBase()
+        chessazenv = BoardEncoding(chessenv, history_length=80)
+        self.b = MoveEncoding(chessazenv)
+        self.who_play = jnp.array(1, dtype=jnp.int32)
+        self.count = jnp.array(0, dtype=jnp.int32)
+        self.terminated = jnp.array(0, dtype=jnp.bool_)
+        self.winner = jnp.array(0, dtype=jnp.int32)
+
+    def num_actions(self) -> int:
+        return 4672
+
+    def invalid_actions(self) -> chex.Array:
+        legal_actions = set(self.b.legal_actions)
+        f = lambda t: 1 if t not in legal_actions else 0
+        return jnp.array(list(map(f, range(4672))), dtype=bool)
+
+    def observation(self) -> chex.Array:
+        b = self.b.observation_p
+        return jnp.array(b)
+
+    def canonical_observation(self):
+        return self.observation() * self.who_play[..., None, None]
+
+    def is_terminated(self) -> chex.Array:
+        return self.terminated
+
+    def max_num_steps(self) -> int:
+        return 100000
+
+    def render(self):
+        print(self.b.render())
+
+    @pax.pure
+    def step(self, action: chex.Array) -> Tuple["ChessMaster", chex.Array]:
+        legal_actions = set(self.b.legal_actions)
+        f = lambda t: 1 if t not in legal_actions else 0
+        invalid_move = jnp.array(list(map(f, action)), dtype=bool)
+        if jnp.sum(invalid_move) > 0:
+            rewards = -100.0 * jnp.ones_like(action)
+            return self, rewards
+
+        (obsb, reward, done, _) = self.b.step(np.array(action))
+        reward = 0.5 * self.who_play if \
+            (obsb.can_claim_threefold_repetition() or obsb.can_claim_fifty_moves() or obsb.can_claim_draw() or obsb.is_fivefold_repetition() or obsb.is_seventyfive_moves()) \
+            else 1.0 * self.who_play if (abs(reward) == 1) else 0.0
+
+        self.who_play = -self.who_play
+
+        self.terminated = True * jnp.ones_like(action, dtype=bool) if \
+            jnp.logical_or(self.terminated, jnp.abs(reward) == 0.5, jnp.abs(reward) == 1.0) else False * jnp.ones_like(action, dtype=bool)
+
+        reward = jnp.ones_like(action) * reward
+
+        return self, reward

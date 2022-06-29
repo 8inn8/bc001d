@@ -19,6 +19,7 @@ import opax
 import optax
 import pax
 
+from chess_game import ChessMaster
 from env import Environment
 from play import agent_vs_agent_multiple_games
 from tree_search import improve_policy_with_mcts, recurrent_fn
@@ -131,7 +132,7 @@ def train(game_class="chess_game.ChessGame", agent_class="ResNetPolicy.ResnetPol
           learning_rate: float = 0.001, ckpt_filename: str = "./data/agent.ckpt", random_seed: int = 88, weight_decay: float = 1e-4,
           temperature_decay=0.9, buffer_size: int = 66_666, rng_key=None):
     env = import_class(game_class)()
-    agent = import_class(agent_class)(input_dims=env.observation_p().shape, num_actions=env.num_actions())
+    agent = import_class(agent_class)(input_dims=env.observation().shape, num_actions=env.num_actions())
     optim = opax.adamw(learning_rate, weight_decay=weight_decay).init(agent.parameters())
     if os.path.isfile(ckpt_filename):
         print("Loading weights at ", ckpt_filename)
@@ -187,8 +188,9 @@ def train(game_class="chess_game.ChessGame", agent_class="ResNetPolicy.ResnetPol
 
 
 if __name__ == '__main__':
-    print("Cores :::: ", jax.local_devices())
-
-    train = partial(train, game_class="chess_game.ChessGame", batch_size=32, num_iterations=512, num_simulations_per_move=64, num_self_plays_per_interaction=888, num_sim_games=32)
-
-    fire.Fire(train)
+    cg = ChessMaster()
+    # print("Cores :::: ", jax.local_devices())
+    #
+    # train = partial(train, game_class="chess_game.ChessGame", batch_size=32, num_iterations=512, num_simulations_per_move=64, num_self_plays_per_interaction=888, num_sim_games=32)
+    #
+    # fire.Fire(train)
