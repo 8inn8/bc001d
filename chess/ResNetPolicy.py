@@ -15,7 +15,6 @@ class ResidualBlock(pax.Module):
         self.conv1 = pax.Conv2D(dim, dim, 3)
         self.conv2 = pax.Conv2D(dim, dim, 3)
 
-    @jax.jit
     def __call__(self, x):
         t = jnn.swish(self.bn1(x))
         t = self.conv1(t)

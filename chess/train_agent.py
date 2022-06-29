@@ -127,7 +127,7 @@ def train_step(net, optim, data: TrainingExample):
 
 
 def train(game_class="chess_game.ChessGame", agent_class="ResNetPolicy.ResnetPolicyValueNet", batch_size: int = 128,
-          num_iterations: int = 256, num_simulations_per_move: int = 2048, num_self_plays_per_interaction: int = 4096,
+          num_iterations: int = 256, num_simulations_per_move: int = 2048, num_self_plays_per_interaction: int = 4096, num_sim_games: int = 512,
           learning_rate: float = 0.001, ckpt_filename: str = "./data/agent.ckpt", random_seed: int = 88, weight_decay: float = 1e-4,
           temperature_decay=0.9, buffer_size: int = 66_666, rng_key=None):
     env = import_class(game_class)()
@@ -172,8 +172,8 @@ def train(game_class="chess_game.ChessGame", agent_class="ResNetPolicy.ResnetPol
         value_loss = sum(value_loss).item() / len(value_loss)
         policy_loss = sum(policy_loss).item() / len(policy_loss)
         print(f" train losses:  value {value_loss:.3f}  policy {policy_loss:.3f}")
-        win_count1, draw_count1, loss_count1 = agent_vs_agent_multiple_games(agent.eval(), old_agent, env, rng_key_2)
-        loss_count2, draw_count2, win_count2 = agent_vs_agent_multiple_games(old_agent, agent.eval(), env, rng_key_3)
+        win_count1, draw_count1, loss_count1 = agent_vs_agent_multiple_games(agent.eval(), old_agent, env, rng_key_2, num_simulations_per_move=num_simulations_per_move, num_games=num_sim_games)
+        loss_count2, draw_count2, win_count2 = agent_vs_agent_multiple_games(old_agent, agent.eval(), env, rng_key_3, num_simulations_per_move=num_simulations_per_move, num_games=num_sim_games)
 
         print("  play against previous version: {} win - {} draw - {} loss".format(win_count1 + win_count2, draw_count1 + draw_count2, loss_count1 + loss_count2))
         with open(ckpt_filename, "wb") as f:
@@ -189,6 +189,6 @@ def train(game_class="chess_game.ChessGame", agent_class="ResNetPolicy.ResnetPol
 if __name__ == '__main__':
     print("Cores :::: ", jax.local_devices())
 
-    train = partial(train, game_class="test_connect_four.Connect4Game", batch_size=512, num_iterations=512, num_simulations_per_move=64, num_self_plays_per_interaction=2048)
+    train = partial(train, game_class="test_connect_four.Connect4Game", batch_size=32, num_iterations=512, num_simulations_per_move=64, num_self_plays_per_interaction=888, num_sim_games=32)
 
     fire.Fire(train)

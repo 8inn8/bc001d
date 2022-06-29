@@ -8,6 +8,7 @@ import jax
 import jax.numpy as jnp
 import jax.random as jr
 from jax import lax
+import jax.nn as jnn
 from fire import Fire
 
 from env import Environment
@@ -34,7 +35,7 @@ def play_one_move(agent, env: Environment, rng_key: chex.Array, enable_mcts: boo
     else:
         action_logits, value = agent(env.canonical_observation())
         action_logits_ = _apply_temperature(action_logits, temperature)
-        action_weights = jax.nn.softmax(action_logits_, axis=-1)
+        action_weights = jnn.softmax(action_logits_, axis=-1)
         action = jr.categorical(rng_key, action_logits)
 
     return action, action_weights, value
@@ -48,14 +49,14 @@ def agent_vs_agent(agent1, agent2, env:Environment, rng_key: chex.Array, enable_
 
     def loop_fn(state):
         env, a1, a2, _, rng_key, turn = state
-        rng_key_1, rng_key_2 = jr.split(rng_key)
+        rng_key_1, rng_key = jr.split(rng_key)
         action, _, _ = play_one_move(a1, env, rng_key_1, enable_mcts=enable_mcts, num_simulations=num_simulations_per_move, temperature=temperature)
         env, reward = env_step(env, action)
         state = (env, a2, a1, turn * reward, rng_key, -turn)
         return state
 
     state = (reset_env(env), agent1, agent2, jnp.array(0), rng_key, jnp.array(1))
-    state = lax.while_loop(cond_fn, loop_fn, state)
+    state = jax.lax.while_loop(cond_fn, loop_fn, state)
     return state[3]
 
 
