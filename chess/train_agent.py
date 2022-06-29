@@ -42,8 +42,8 @@ class MoveOutput:
     action_weights: chex.Array
 
 
-@partial(jax.jit, static_argnums=(3, 4, 5))
 @partial(jax.pmap, in_axes=(None, None, 0), static_broadcasted_argnums=(3, 4, 5))
+@partial(jax.jit, static_argnums=(3, 4, 5))
 def collect_batched_self_play_data(agent, env: Environment, rng_key: chex.Array, batch_size: int, num_simulations_per_move: int, temperature_decay: float):
 
     def single_move(prev, inputs):
@@ -104,7 +104,7 @@ def prepare_training_data(data: MoveOutput):
 @jax.jit
 @partial(jax.value_and_grad, has_aux=True)
 def loss_fn(net, data: TrainingExample):
-    net, (action_logits, value) = batched_policy(net, data.space)
+    net, (action_logits, value) = batched_policy(net, data.state)
 
     mse_loss = optax.l2_loss(value, data.value)
     mse_loss = jnp.mean(mse_loss)
@@ -189,6 +189,6 @@ def train(game_class="chess_game.ChessGame", agent_class="ResNetPolicy.ResnetPol
 if __name__ == '__main__':
     print("Cores :::: ", jax.local_devices())
 
-    train = partial(train, game_class="test_connect_four.Connect4Game", num_iterations=512, num_simulations_per_move=64, num_self_plays_per_interaction=2048)
+    train = partial(train, game_class="test_connect_four.Connect4Game", batch_size=512, num_iterations=512, num_simulations_per_move=64, num_self_plays_per_interaction=2048)
 
     fire.Fire(train)
