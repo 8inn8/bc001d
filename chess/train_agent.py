@@ -19,7 +19,6 @@ import opax
 import optax
 import pax
 
-from chess_game import ChessMain
 from env import Environment
 from play import agent_vs_agent_multiple_games
 from tree_search import improve_policy_with_mcts, recurrent_fn
